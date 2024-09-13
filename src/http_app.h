@@ -66,6 +66,11 @@ void http_app_stop();
 esp_err_t http_app_set_handler_hook( httpd_method_t method,  esp_err_t (*handler)(httpd_req_t *r)  );
 
 
+/**
+ * @brief sets a callback to allow user to modify http_server options
+ */
+void http_app_set_config_callback(void (*cb)(httpd_config_t *config));
+
 #ifdef __cplusplus
 }
 #endif
