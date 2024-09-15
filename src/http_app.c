@@ -57,9 +57,6 @@ static httpd_handle_t httpd_handle = NULL;
 esp_err_t (*custom_get_httpd_uri_handler)(httpd_req_t *r) = NULL;
 esp_err_t (*custom_post_httpd_uri_handler)(httpd_req_t *r) = NULL;
 
-/* function pointer to user option setting callback */
-void (*custom_config_callback)(httpd_config_t *config) = NULL;
-
 /* strings holding the URLs of the wifi manager */
 static char* http_root_url = NULL;
 static char* http_redirect_url = NULL;
@@ -117,9 +114,6 @@ esp_err_t http_app_set_handler_hook( httpd_method_t method,  esp_err_t (*handler
 
 }
 
-void http_app_set_config_callback(void (*cb)(httpd_config_t *config)){
-	custom_config_callback = cb;
-}
 
 static esp_err_t http_server_delete_handler(httpd_req_t *req){
 
@@ -433,11 +427,6 @@ void http_app_start(bool lru_purge_enable){
 		 * We could register all URLs one by one, but this would not work while the fake DNS is active */
 		config.uri_match_fn = httpd_uri_match_wildcard;
 		config.lru_purge_enable = lru_purge_enable;
-
-		/* allow user to set options if callback present */
-		if(custom_config_callback != NULL){
-			custom_config_callback(&config);
-		}
 
 		/* generate the URLs */
 		if(http_root_url == NULL){
