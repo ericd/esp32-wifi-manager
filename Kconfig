@@ -78,4 +78,9 @@ config DEFAULT_AP_BEACON_INTERVAL
     help
 	100ms is the recommended default.
 
+config HTTPD_STACK_SIZE
+    int "Stack size of httpd task"
+    default 4096
+    help
+	Default in esp-idf is 4096 which may not be enough for some applications.
 endmenu
