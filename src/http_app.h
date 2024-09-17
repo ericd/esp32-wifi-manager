@@ -48,6 +48,10 @@ extern "C" {
  */
 #define WEBAPP_LOCATION 					CONFIG_WEBAPP_LOCATION
 
+/** @brief Sets the stack size of the httpd task.
+ *  Default in esp-idf is 4096 which may not be enough for some applications.
+ */
+#define HTTPD_STACK_SIZE          CONFIG_HTTPD_STACK_SIZE
 
 /** 
  * @brief spawns the http server 
