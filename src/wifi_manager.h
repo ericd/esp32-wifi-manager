@@ -81,6 +81,13 @@ extern "C" {
  */
 #define WIFI_MANAGER_SHUTDOWN_AP_TIMER		CONFIG_WIFI_MANAGER_SHUTDOWN_AP_TIMER
 
+/**
+ * @brief Enable user code to create default event loop
+ * Omits call to esp_event_loop_create_default() so user code can create it.
+ * Used to enable user code to register event handlers before wifi_manager code
+ * is executed.
+ */
+#define WIFI_MANAGER_USER_CREATES_DEFAULT_EVENT_LOOP  CONFIG_WIFI_MANAGER_USER_CREATES_DEFAULT_EVENT_LOOP
 
 /** @brief Defines the task priority of the wifi_manager.
  *

@@ -24,6 +24,12 @@ config WIFI_MANAGER_SHUTDOWN_AP_TIMER
 	help
 	Defines the time (in ms) to wait after a succesful connection before shutting down the access point.
 
+config WIFI_MANAGER_USER_CREATES_DEFAULT_EVENT_LOOP
+    bool "Enable user code to create default event loop"
+    default "n"
+    help
+    Omits call to esp_event_loop_create_default() so user code can create it.  Used to enable user code to register event handlers before wifi_manager code is executed.
+
 config WEBAPP_LOCATION
     string "Defines the URL where the wifi manager is located"
     default "/"

@@ -901,7 +901,9 @@ void wifi_manager( void * pvParameters ){
 	ESP_ERROR_CHECK(esp_netif_init());
 
 	/* event loop for the wifi driver */
+#ifndef WIFI_MANAGER_USER_CREATES_DEFAULT_EVENT_LOOP
 	ESP_ERROR_CHECK(esp_event_loop_create_default());
+#endif /* !WIFI_MANAGER_USER_CREATES_DEFAULT_EVENT_LOOP */
 
 	esp_netif_sta = esp_netif_create_default_wifi_sta();
 	esp_netif_ap = esp_netif_create_default_wifi_ap();
