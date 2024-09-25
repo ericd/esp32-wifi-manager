@@ -56,6 +56,9 @@ static httpd_handle_t httpd_handle = NULL;
 /* function pointers to URI handlers that can be user made */
 esp_err_t (*custom_get_httpd_uri_handler)(httpd_req_t *r) = NULL;
 esp_err_t (*custom_post_httpd_uri_handler)(httpd_req_t *r) = NULL;
+#ifdef WEBSOCKET_SUPPORT
+esp_err_t (*ws_handler)(int fd) = NULL;
+#endif /* WEBSOCKET_SUPPORT */
 
 /* strings holding the URLs of the wifi manager */
 static char* http_root_url = NULL;
@@ -96,8 +99,6 @@ const static char http_cache_control_cache[] = "public, max-age=31536000";
 const static char http_pragma_hdr[] = "Pragma";
 const static char http_pragma_no_cache[] = "no-cache";
 
-
-
 esp_err_t http_app_set_handler_hook( httpd_method_t method,  esp_err_t (*handler)(httpd_req_t *r)  ){
 
 	if(method == HTTP_GET){
@@ -114,6 +115,11 @@ esp_err_t http_app_set_handler_hook( httpd_method_t method,  esp_err_t (*handler
 
 }
 
+#ifdef WEBSOCKET_SUPPORT
+void http_app_set_ws_handler_hook(esp_err_t (*handler)(int fd)){
+	ws_handler = handler;
+}
+#endif /* WEBSOCKET_SUPPORT */
 
 static esp_err_t http_server_delete_handler(httpd_req_t *req){
 
@@ -208,6 +214,77 @@ static esp_err_t http_server_post_handler(httpd_req_t *req){
 	return ret;
 }
 
+#ifdef WEBSOCKET_SUPPORT
+typedef struct {
+	int fd;
+	httpd_ws_frame_t pkt;
+} async_send_t;
+
+static void async_send(void *arg){
+	async_send_t *as = (async_send_t*)arg;
+
+	httpd_ws_send_frame_async(httpd_handle, as->fd, &as->pkt);
+	/* need to free memory at arg allocated in http_app_ws_send() */
+	if (as->pkt.payload != NULL) {
+		free(as->pkt.payload);
+	}
+	free(as);
+}
+
+esp_err_t http_app_ws_send(int fd, const uint8_t* data, size_t len, bool type_text){
+	async_send_t *as;
+
+	if (httpd_handle == NULL) {
+		return ESP_FAIL;
+	}
+
+	if (httpd_ws_get_fd_info(httpd_handle, fd) != HTTPD_WS_CLIENT_WEBSOCKET) {
+		return ESP_FAIL;
+	}
+
+	if ((as = malloc(sizeof (async_send_t))) == NULL) {
+		return ESP_ERR_NO_MEM;
+	}
+	memset(as, 0, sizeof (async_send_t));
+	if ((as->pkt.payload = malloc(len)) == NULL) {
+		free(as);
+		return ESP_ERR_NO_MEM;
+	}
+
+	as->fd = fd;
+	memcpy(as->pkt.payload, data, len);
+	as->pkt.len = len;
+	as->pkt.type = type_text ? HTTPD_WS_TYPE_TEXT : HTTPD_WS_TYPE_BINARY;
+
+	int ret = httpd_queue_work(httpd_handle, async_send, as);
+	if (ret != ESP_OK) {
+		/* didn't get queued, need to free it ourselves */
+		if (as->pkt.payload != NULL) {
+			free(as->pkt.payload);
+		}
+		free(as);
+		return ret;
+	}
+
+	return ESP_OK;
+}
+
+static esp_err_t http_server_ws_handler(httpd_req_t *req){
+
+		if (req->method == HTTP_GET) {
+			ESP_LOGD(TAG, "GET %s (websocket handshake)", req->uri);
+			int fd = httpd_req_to_sockfd(req);
+			int ret = ESP_FAIL;
+			if (ws_handler != NULL) {
+				ret = ws_handler(fd);
+			}
+			return ret;
+		}
+
+		/* invoked for other inbound websocket messages that are ignored */
+		return ESP_OK;
+}
+#endif /* WEBSOCKET_SUPPORT */
 
 static esp_err_t http_server_get_handler(httpd_req_t *req){
 
@@ -342,6 +419,15 @@ static const httpd_uri_t http_server_get_request = {
     .handler   = http_server_get_handler
 };
 
+#ifdef WEBSOCKET_SUPPORT
+static const httpd_uri_t http_server_ws_request = {
+    .uri       = WEBSOCKET_URI,
+    .method    = HTTP_GET,
+    .handler   = http_server_ws_handler,
+    .is_websocket = true
+};
+#endif /* WEBSOCKET_SUPPORT */
+
 static const httpd_uri_t http_server_post_request = {
 	.uri	= "*",
 	.method = HTTP_POST,
@@ -471,6 +557,9 @@ void http_app_start(bool lru_purge_enable){
 
 	    if (err == ESP_OK) {
 	        ESP_LOGI(TAG, "Registering URI handlers");
+#ifdef WEBSOCKET_SUPPORT
+	        httpd_register_uri_handler(httpd_handle, &http_server_ws_request);
+#endif /* WEBSOCKET_SUPPORT */
 	        httpd_register_uri_handler(httpd_handle, &http_server_get_request);
 	        httpd_register_uri_handler(httpd_handle, &http_server_post_request);
 	        httpd_register_uri_handler(httpd_handle, &http_server_delete_request);

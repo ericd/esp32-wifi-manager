@@ -89,4 +89,18 @@ config HTTPD_STACK_SIZE
     default 4096
     help
 	Default in esp-idf is 4096 which may not be enough for some applications.
+
+menu "Websocket Support"
+config WEBSOCKET_SUPPORT
+    bool "Enable websocket support"
+    default false
+    help
+	Enables support for accepting websocket handshakes for messages to be pushed to a websocket client. Requires that CONFIG_HTTPD_WS_SUPPORT is also enabled in ESP HTTP Server.
+
+config WEBSOCKET_URI
+    string "URI for websocket handshake"
+    default "/ws"
+    help
+	Defines the URI path for a websocket handshake. Requires that CONFIG_HTTPD_WS_SUPPORT is also enabled in ESP HTTP Server.
+endmenu
 endmenu

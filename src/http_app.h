@@ -53,6 +53,19 @@ extern "C" {
  */
 #define HTTPD_STACK_SIZE          CONFIG_HTTPD_STACK_SIZE
 
+/** @brief Enables support for accepting websocket handshakes for
+  * messages to be pushed to a websocket client. Requires that
+  * CONFIG_HTTPD_WS_SUPPORT is also enabled in ESP HTTP Server.
+  */
+#if CONFIG_WEBSOCKET_SUPPORT
+# define WEBSOCKET_SUPPORT
+#endif /* CONFIG_WEBSOCKET_SUPPORT */
+
+/** @brief Defines the URI path for a websocket handshake. Requires
+ *  that CONFIG_HTTPD_WS_SUPPORT is also enabled.
+ */
+#define WEBSOCKET_URI             CONFIG_WEBSOCKET_URI
+
 /** 
  * @brief spawns the http server 
  */
@@ -69,6 +82,33 @@ void http_app_stop();
  */
 esp_err_t http_app_set_handler_hook( httpd_method_t method,  esp_err_t (*handler)(httpd_req_t *r)  );
 
+#ifdef WEBSOCKET_SUPPORT
+/**
+ * @brief Sends a websocket packet to a connected client. The
+ * client's file descriptor is known by the caller from receiving
+ * a call to the handler supplied in http_app_set_ws_handler_hook().
+ * If the call does not return ESP_OK the caller should consider
+ * the client (by way of the file descriptor) no longer connected.
+ *
+ * @param fd File descriptor identifying a client to receive message
+ * @param data Bytes to be sent to the client
+ * @param len Length of data
+ * @param type_text True if websocket is text, otherwise considered binary
+ *
+ * @return ESP_OK if the message was sent
+ */
+esp_err_t http_app_ws_send(int fd, const uint8_t* data, size_t len, bool type_text);
+
+/**
+ * @brief Sets a hook that is called when a client requests the
+ * websocket URI. The file descriptor for of the client connection
+ * is passed in fd.  The file descriptor can subsquently be used to
+ * send a websocket message using http_app_ws_send().
+ *
+ * @param handler A function with signature `esp_err_t fn(int fd)`
+ */
+void http_app_set_ws_handler_hook(esp_err_t (*handler)(int fd));
+#endif /* WEBSOCKET_SUPPORT */
 
 #ifdef __cplusplus
 }
