@@ -56,6 +56,7 @@ static httpd_handle_t httpd_handle = NULL;
 /* function pointers to URI handlers that can be user made */
 esp_err_t (*custom_get_httpd_uri_handler)(httpd_req_t *r) = NULL;
 esp_err_t (*custom_post_httpd_uri_handler)(httpd_req_t *r) = NULL;
+esp_err_t (*custom_put_httpd_uri_handler)(httpd_req_t *r) = NULL;
 #ifdef WEBSOCKET_SUPPORT
 esp_err_t (*ws_handler)(int fd) = NULL;
 #endif /* WEBSOCKET_SUPPORT */
@@ -107,6 +108,10 @@ esp_err_t http_app_set_handler_hook( httpd_method_t method,  esp_err_t (*handler
 	}
 	else if(method == HTTP_POST){
 		custom_post_httpd_uri_handler = handler;
+		return ESP_OK;
+	}
+	else if(method == HTTP_PUT){
+		custom_put_httpd_uri_handler = handler;
 		return ESP_OK;
 	}
 	else{
@@ -209,6 +214,25 @@ static esp_err_t http_server_post_handler(httpd_req_t *req){
 			/* if there's a hook, run it */
 			ret = (*custom_post_httpd_uri_handler)(req);
 		}
+	}
+
+	return ret;
+}
+
+static esp_err_t http_server_put_handler(httpd_req_t *req){
+
+	esp_err_t ret = ESP_OK;
+
+	ESP_LOGI(TAG, "PUT %s", req->uri);
+
+	if(custom_put_httpd_uri_handler == NULL){
+		httpd_resp_set_status(req, http_404_hdr);
+		httpd_resp_send(req, NULL, 0);
+	}
+	else{
+
+		/* if there's a hook, run it */
+		ret = (*custom_put_httpd_uri_handler)(req);
 	}
 
 	return ret;
@@ -434,6 +458,12 @@ static const httpd_uri_t http_server_post_request = {
 	.handler = http_server_post_handler
 };
 
+static const httpd_uri_t http_server_put_request = {
+	.uri	= "*",
+	.method = HTTP_PUT,
+	.handler = http_server_put_handler
+};
+
 static const httpd_uri_t http_server_delete_request = {
 	.uri	= "*",
 	.method = HTTP_DELETE,
@@ -562,6 +592,7 @@ void http_app_start(bool lru_purge_enable){
 #endif /* WEBSOCKET_SUPPORT */
 	        httpd_register_uri_handler(httpd_handle, &http_server_get_request);
 	        httpd_register_uri_handler(httpd_handle, &http_server_post_request);
+	        httpd_register_uri_handler(httpd_handle, &http_server_put_request);
 	        httpd_register_uri_handler(httpd_handle, &http_server_delete_request);
 	    }
 	}
